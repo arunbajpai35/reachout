@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     # Vendors
     apify_token: str | None = None
     contactout_api_key: str | None = None
+    hunter_api_key: str | None = None
 
     # Discovery provider switch: "mock" (default, free) | "contactout" (paid) | "apify" (paid)
     recruiter_provider: str = "mock"

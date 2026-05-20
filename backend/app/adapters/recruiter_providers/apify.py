@@ -155,6 +155,11 @@ def _items_to_candidates(items: list[dict], *, company_name: str) -> list[Recrui
             or it.get("currentJobTitle")
             or it.get("jobTitle")
         )
+        if not title:
+            # harvestapi: title lives at currentPositions[0].title
+            positions = it.get("currentPositions") or it.get("experience") or []
+            if positions and isinstance(positions[0], dict):
+                title = positions[0].get("title") or positions[0].get("position")
         url = (
             it.get("profileUrl")
             or it.get("linkedinUrl")
@@ -168,6 +173,14 @@ def _items_to_candidates(items: list[dict], *, company_name: str) -> list[Recrui
             or it.get("country")
             or it.get("addressWithCountry")
         )
+        # harvestapi returns location as {linkedinText: "..."}. Other actors return a flat string.
+        if isinstance(location, dict):
+            location = (
+                location.get("linkedinText")
+                or location.get("text")
+                or location.get("name")
+                or location.get("city")
+            )
         if not name or not url:
             continue
         url = str(url).split("?")[0]

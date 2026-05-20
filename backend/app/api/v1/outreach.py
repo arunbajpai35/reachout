@@ -1,8 +1,7 @@
 from uuid import UUID
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 
-from app.adapters.llm.openai_client import OpenAILLM
 from app.api.schemas.outreach import (
     EvaluateOutreachRequest,
     EvaluateOutreachResponse,
@@ -18,8 +17,6 @@ from app.domain.outreach.quality import QualityReport, evaluate_draft
 from app.services.outreach_service import OutreachService
 
 router = APIRouter(prefix="/outreach", tags=["outreach"])
-
-_llm = OpenAILLM()
 
 
 def _to_draft(row: Outreach, quality: QualityReport | None = None) -> OutreachDraft:
@@ -44,9 +41,9 @@ def _to_draft(row: Outreach, quality: QualityReport | None = None) -> OutreachDr
 
 @router.post("", response_model=GenerateOutreachResponse, status_code=201)
 async def generate_outreach(
-    payload: GenerateOutreachRequest, session: SessionDep
+    payload: GenerateOutreachRequest, session: SessionDep, request: Request
 ) -> GenerateOutreachResponse:
-    service = OutreachService(session, llm=_llm)
+    service = OutreachService(session, llm=request.app.state.llm)
     pairs = await service.generate(
         user_id=get_settings().dev_user_id,
         job_id=payload.job_id,
@@ -58,16 +55,21 @@ async def generate_outreach(
 
 
 @router.get("/{outreach_id}", response_model=OutreachDraft)
-async def get_outreach(outreach_id: UUID, session: SessionDep) -> OutreachDraft:
-    service = OutreachService(session, llm=_llm)
+async def get_outreach(
+    outreach_id: UUID, session: SessionDep, request: Request
+) -> OutreachDraft:
+    service = OutreachService(session, llm=request.app.state.llm)
     return _to_draft(await service.get(outreach_id))
 
 
 @router.post("/{outreach_id}/regenerate", response_model=GenerateOutreachResponse, status_code=201)
 async def regenerate_outreach(
-    outreach_id: UUID, session: SessionDep, tone: str | None = None
+    outreach_id: UUID,
+    session: SessionDep,
+    request: Request,
+    tone: str | None = None,
 ) -> GenerateOutreachResponse:
-    service = OutreachService(session, llm=_llm)
+    service = OutreachService(session, llm=request.app.state.llm)
     pairs = await service.regenerate(
         user_id=get_settings().dev_user_id, outreach_id=outreach_id, tone=tone
     )
@@ -79,9 +81,9 @@ async def regenerate_outreach(
     response_model=list[OutreachDraft],
 )
 async def list_drafts_for_pair(
-    job_id: UUID, recruiter_id: UUID, session: SessionDep
+    job_id: UUID, recruiter_id: UUID, session: SessionDep, request: Request
 ) -> list[OutreachDraft]:
-    service = OutreachService(session, llm=_llm)
+    service = OutreachService(session, llm=request.app.state.llm)
     rows = await service.list_for_pair(job_id=job_id, recruiter_id=recruiter_id)
     return [_to_draft(r) for r in rows]
 

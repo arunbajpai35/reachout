@@ -1,10 +1,9 @@
 from uuid import UUID
 
-from fastapi import APIRouter, File, UploadFile
+from fastapi import APIRouter, File, Request, UploadFile
 from pydantic import BaseModel
 from sqlalchemy import select
 
-from app.adapters.llm.openai_client import OpenAILLM
 from app.api.schemas.candidate import CandidateResponse, CandidateUpsert
 from app.config import get_settings
 from app.db.models import Candidate, Resume
@@ -12,9 +11,6 @@ from app.deps import SessionDep
 from app.services.resume_service import ResumeService
 
 router = APIRouter(prefix="/candidate", tags=["candidate"])
-
-# Single shared LLM client (AsyncOpenAI manages its own connection pool).
-_llm = OpenAILLM()
 
 
 @router.get("", response_model=CandidateResponse | None)
@@ -74,6 +70,7 @@ class ResumeParseResponse(BaseModel):
 @router.post("/resume", response_model=ResumeParseResponse, status_code=201)
 async def upload_resume(
     session: SessionDep,
+    request: Request,
     file: UploadFile = File(...),
 ) -> ResumeParseResponse:
     """Upload + parse a PDF resume. Does NOT mutate the candidate row.
@@ -84,7 +81,7 @@ async def upload_resume(
     user_id = get_settings().dev_user_id
     pdf_bytes = await file.read()
 
-    service = ResumeService(session, llm=_llm)
+    service = ResumeService(session, llm=request.app.state.llm)
     resume = await service.ingest(
         user_id=user_id,
         filename=file.filename or "resume.pdf",
@@ -94,8 +91,10 @@ async def upload_resume(
 
 
 @router.get("/resume/{resume_id}", response_model=ResumeParseResponse)
-async def get_parsed_resume(resume_id: UUID, session: SessionDep) -> ResumeParseResponse:
-    service = ResumeService(session, llm=_llm)
+async def get_parsed_resume(
+    resume_id: UUID, session: SessionDep, request: Request
+) -> ResumeParseResponse:
+    service = ResumeService(session, llm=request.app.state.llm)
     resume = await service.get(resume_id)
     return _resume_to_response(resume)
 

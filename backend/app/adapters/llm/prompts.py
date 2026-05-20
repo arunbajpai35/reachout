@@ -369,7 +369,7 @@ Return one variant per requested channel. Follow every rule in the system messag
 # Resume parsing
 # =====================================================================
 
-RESUME_PARSE_PROMPT_VERSION = "resume-v3.1"
+RESUME_PARSE_PROMPT_VERSION = "resume-v3.2"
 
 RESUME_PARSE_SYSTEM = """You extract a candidate's professional profile from resume text into a strict schema.
 
@@ -436,5 +436,12 @@ RESUME_PARSE_SCHEMA = {
 
 
 def build_resume_user_prompt(*, text: str) -> str:
-    return f"Resume text follows. Extract the schema fields.\n---\n{text}"
+    from datetime import date
+
+    today = date.today().isoformat()
+    return (
+        f"Today's date: {today}. "
+        f"For any role marked 'Present' / 'Current' / no end date, treat the end as exactly this date.\n\n"
+        f"Resume text follows. Extract the schema fields.\n---\n{text}"
+    )
 

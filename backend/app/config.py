@@ -55,6 +55,12 @@ class Settings(BaseSettings):
     # App
     app_env: str = "dev"
     log_level: str = "INFO"
+    # Comma-separated extra origins allowed by CORS (e.g. "https://reachout.vercel.app")
+    cors_origins: str | None = None
+    # When True, the API uses FastAPI BackgroundTasks instead of Arq for in-process
+    # async work. Default True so single-service deploys (Render free tier) work
+    # without a separate worker process. Set False to use the Arq worker.
+    use_background_tasks: bool = True
 
 
 @lru_cache

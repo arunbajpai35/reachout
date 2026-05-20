@@ -6,7 +6,11 @@ import { Building2 } from "lucide-react";
 
 export default function CompanyConfirmCard({ job }: { job: Job }) {
   const company = job.company!;
-  const [slug, setSlug] = useState(job.company_slug_suggestion ?? "");
+  // Pre-fill: prefer already-confirmed slug on the company row, fall back to
+  // the heuristic suggestion. Either way the user can edit before confirming.
+  const [slug, setSlug] = useState(
+    company.linkedin_slug ?? job.company_slug_suggestion ?? "",
+  );
   const [name, setName] = useState(company.name);
   const qc = useQueryClient();
 

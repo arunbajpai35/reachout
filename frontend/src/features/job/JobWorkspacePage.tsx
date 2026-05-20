@@ -70,8 +70,11 @@ export default function JobWorkspacePage() {
 
         {job.parsed && <ExtractedRoleCard parsed={job.parsed} />}
 
-        {/* Company confirmation: shown when ready or unconfirmed */}
-        {job.company && !job.company.linkedin_slug && (
+        {/* Company confirmation: shown whenever the job is awaiting the user's
+            go-ahead to spend recruiter-API credits. We also show it when a slug
+            is already cached on the company row (from a previous job for the
+            same company) -- the user still needs to confirm to fire discovery. */}
+        {job.company && job.status === "extracted" && (
           <CompanyConfirmCard job={job} />
         )}
 

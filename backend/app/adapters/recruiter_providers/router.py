@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from app.adapters.recruiter_providers.apify import ApifyRecruiterProvider
 from app.adapters.recruiter_providers.base import RecruiterDiscoveryProvider
 from app.adapters.recruiter_providers.contactout import ContactOutProvider
 from app.adapters.recruiter_providers.mock import MockProvider
@@ -14,4 +15,6 @@ def get_recruiter_provider() -> RecruiterDiscoveryProvider:
         return MockProvider()
     if name == "contactout":
         return ContactOutProvider()
+    if name == "apify":
+        return ApifyRecruiterProvider()
     raise AppError(f"unknown recruiter_provider: {name}")

@@ -38,9 +38,11 @@ class Settings(BaseSettings):
     apify_token: str | None = None
     contactout_api_key: str | None = None
 
-    # Discovery provider switch: "mock" (default, free) | "contactout" (paid)
+    # Discovery provider switch: "mock" (default, free) | "contactout" (paid) | "apify" (paid)
     recruiter_provider: str = "mock"
     recruiter_limit: int = 25
+    # Optional override for which Apify actor to use; default is set in the adapter.
+    apify_recruiter_actor: str | None = None
 
     # Contact-enrichment provider: "mock" (default, free) | "contactout" (paid, 1 credit/call)
     contact_provider: str = "mock"

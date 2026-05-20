@@ -22,6 +22,7 @@ from app.adapters.pdf.pdf_extractor import extract_pdf_text
 from app.core.errors import NotFoundError, ValidationError
 from app.core.logging import log
 from app.db.models import Resume
+from app.domain.resume import compute_years_experience
 
 # Cap on the text we send to the LLM. Resumes longer than this are rare and the
 # tail is usually education/references. Saves tokens and avoids context-window
@@ -57,6 +58,12 @@ class ResumeService:
             schema_name="resume_parse",
             temperature=0.0,
         )
+
+        # Years of experience is computed in code from the structured `roles`
+        # array, not extracted by the LLM. The model is bad at multi-step
+        # arithmetic and reliably over- or under-counted on test resumes.
+        years_experience = compute_years_experience(parsed.get("roles") or [])
+        parsed["years_experience"] = years_experience
 
         resume = Resume(
             user_id=user_id,

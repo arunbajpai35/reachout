@@ -369,7 +369,7 @@ Return one variant per requested channel. Follow every rule in the system messag
 # Resume parsing
 # =====================================================================
 
-RESUME_PARSE_PROMPT_VERSION = "resume-v3.2"
+RESUME_PARSE_PROMPT_VERSION = "resume-v4"
 
 RESUME_PARSE_SYSTEM = """You extract a candidate's professional profile from resume text into a strict schema.
 
@@ -377,17 +377,13 @@ Rules:
 - Output ONLY fields present in the schema. If a field is not clearly supported by the resume, use null (or [] for arrays).
 - Do NOT invent experience, projects, or numbers. If a metric is not in the resume, omit it.
 - summary: 1-2 sentences describing the candidate's specialty and current focus. Synthesized, but grounded in the resume content. No marketing language.
-- years_experience: number (decimals allowed). Compute it by this exact procedure:
-    1. For each post-education role, compute its duration IN MONTHS (count months between start month and end month, or between start and today if the role is ongoing). Work at month-level granularity, NEVER at year-level.
-    2. Apply weights to the months:
-        - Full-time roles: weight 1.0
-        - Part-time / contract roles: weight 0.5
-        - Internships: weight 0 (excluded entirely; do not add anything for them)
-        - Volunteer / unpaid roles: weight 0
-    3. Sum all the weighted months across all roles.
-    4. Divide that total by 12 ONLY at the very end.
-    5. Round to 1 decimal place.
-    Do NOT round per-role years before summing -- always sum months first. Do NOT use the calendar span from earliest job to today. If dates are ambiguous or missing, return null.
+- roles: extract EVERY professional role on the resume, including internships, as a structured array. Total years of experience is computed in code from this array, so accuracy here matters more than anything else in this output.
+    For each role:
+        - company: exact company name as written on the resume.
+        - start: month and year in "YYYY-MM" format (e.g. "2024-06" for June 2024).
+        - end: "YYYY-MM" for past roles, or the literal string "present" for ongoing/current roles. Never invent end dates.
+        - type: one of "fulltime", "parttime", "contract", "intern", "volunteer". Default to "fulltime" only when the resume clearly indicates a full-time professional role. Internships labelled "Intern" / "Internship" / "Summer Intern" MUST be "intern", regardless of duration.
+    If a date is ambiguous (e.g. only a year is given, no month), use month "01" for the start and "12" for the end.
 - target_role: ONLY if the resume explicitly states a target role (objective line, "looking for" statement). Otherwise null.
 - skills: lowercased canonical technical skills (languages, frameworks, databases, tools). Deduplicated. Skip soft skills, methodologies named without context, and tools mentioned only in passing.
 - notable_projects: STRONGLY prefer items from a dedicated "Projects" / "Personal Projects" / "Side Projects" / "Open Source" section of the resume.
@@ -398,7 +394,7 @@ Rules:
         - name: short, the project/system name as written in the resume, or a 2-4 word label if no name is given.
         - description: 1 sentence, what they built and the outcome. Use numbers from the resume verbatim if present.
         - stack: lowercased technical components used in that specific project.
-- extraction_notes: 1-2 sentences. What was clear vs inferred. Mention if years_experience was inferred from dates, or if no target_role was found. Honest and specific.
+- extraction_notes: 1-2 sentences. What was clear vs inferred. Mention any dates that were ambiguous, or if no target_role was found. Honest and specific. Do NOT discuss years-of-experience math here -- that's computed in code from `roles`, not from your text.
 """
 
 RESUME_PARSE_SCHEMA = {
@@ -406,7 +402,7 @@ RESUME_PARSE_SCHEMA = {
     "additionalProperties": False,
     "required": [
         "summary",
-        "years_experience",
+        "roles",
         "target_role",
         "skills",
         "notable_projects",
@@ -414,7 +410,23 @@ RESUME_PARSE_SCHEMA = {
     ],
     "properties": {
         "summary": {"type": ["string", "null"]},
-        "years_experience": {"type": ["number", "null"]},
+        "roles": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["company", "start", "end", "type"],
+                "properties": {
+                    "company": {"type": "string"},
+                    "start": {"type": "string"},  # "YYYY-MM"
+                    "end": {"type": "string"},    # "YYYY-MM" or "present"
+                    "type": {
+                        "type": "string",
+                        "enum": ["fulltime", "parttime", "contract", "intern", "volunteer"],
+                    },
+                },
+            },
+        },
         "target_role": {"type": ["string", "null"]},
         "skills": {"type": "array", "items": {"type": "string"}},
         "notable_projects": {

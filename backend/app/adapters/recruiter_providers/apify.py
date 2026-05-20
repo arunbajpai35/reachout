@@ -22,13 +22,14 @@ from app.config import get_settings
 from app.core.errors import UpstreamError
 from app.core.logging import log
 
-# A reasonable default. Override via APIFY_RECRUITER_ACTOR if you prefer a
-# different one or have a private actor.
-DEFAULT_ACTOR = "apimaestro/linkedin-company-employees-scraper"
+# Default actor: harvestapi's linkedin-company-employees. Pricing: $3/1k "Basic"
+# profiles (name/title/url/location) -- enough for our ranking + outreach pipeline.
+# Override via APIFY_RECRUITER_ACTOR if you prefer a different one.
+DEFAULT_ACTOR = "harvestapi/linkedin-company-employees"
 
-# Title keywords we ask the actor to filter on. The local classifier still has
-# the final say -- this just biases the upstream search.
-DEFAULT_KEYWORDS = "recruiter OR talent acquisition OR TAG OR engineering recruiter"
+# "Basic" gives us the fields our parser needs at $3/1k; "Full" is $8/1k and
+# includes attempted email lookup. Stick with Basic; ContactOut handles emails.
+DEFAULT_SCRAPER_MODE = "Basic"
 
 
 class ApifyRecruiterProvider(RecruiterDiscoveryProvider):
@@ -48,18 +49,22 @@ class ApifyRecruiterProvider(RecruiterDiscoveryProvider):
         company_name: str,
         limit: int = 25,
     ) -> list[RecruiterCandidate]:
-        # Most LinkedIn-employees actors accept either a company URL or slug.
-        # We send both forms in the input so the actor can pick what it needs.
+        # Input shape targets harvestapi/linkedin-company-employees. Extra keys
+        # (companyUrl, country, etc.) are harmless on other actors -- most ignore
+        # unknown fields.
         company_url = f"https://www.linkedin.com/company/{company_linkedin_slug}"
         run_input: dict[str, Any] = {
+            "companies": [company_url],
+            "profileScraperMode": DEFAULT_SCRAPER_MODE,
+            "locations": ["India"],
+            "maxItems": limit,
+            # Legacy / alternate-actor compatibility keys (ignored by harvestapi):
             "companyUrl": company_url,
             "companyUrls": [company_url],
             "company": company_linkedin_slug,
-            "keywords": DEFAULT_KEYWORDS,
             "country": "India",
             "location": "India",
             "maxResults": limit,
-            "maxItems": limit,
         }
 
         log.info(

@@ -13,11 +13,26 @@ class Settings(BaseSettings):
     # Redis
     redis_url: str
 
-    # OpenAI
-    openai_api_key: str
+    # OpenAI (direct) -- optional if Azure is configured.
+    openai_api_key: str | None = None
     openai_model_extract: str = "gpt-4o-2024-11-20"
     openai_model_outreach: str = "gpt-4o-2024-11-20"
     openai_embed_model: str = "text-embedding-3-small"
+
+    # Azure OpenAI -- if these are set, they take precedence over direct OpenAI.
+    azure_openai_api_key: str | None = None
+    azure_openai_endpoint: str | None = None
+    azure_openai_api_version: str = "2025-01-01-preview"
+    azure_openai_deployment_chat: str | None = None
+    azure_openai_deployment_embed: str | None = None
+
+    @property
+    def use_azure(self) -> bool:
+        return bool(
+            self.azure_openai_api_key
+            and self.azure_openai_endpoint
+            and self.azure_openai_deployment_chat
+        )
 
     # Vendors
     apify_token: str | None = None

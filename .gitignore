@@ -1,0 +1,51 @@
+# ---------- secrets ----------
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# ---------- python ----------
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# ---------- node / vite ----------
+node_modules/
+.pnp
+.pnp.js
+frontend/dist/
+frontend/.vite/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ---------- editors / OS ----------
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ---------- project ----------
+# Tuning reports are generated artifacts containing real prompt outputs;
+# track on purpose if you want to diff prompt versions, otherwise leave ignored.
+backend/tuning-reports/
+
+# Local uploaded resumes if we ever start persisting them
+backend/.uploads/

@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: reachout-api
+    runtime: python
+    rootDir: backend
+    plan: free
+    pythonVersion: "3.11"
+    buildCommand: pip install -e .
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /healthz
+    # Secrets are NOT in this file. Add them via the Render dashboard:
+    #   DATABASE_URL              (Neon pooled connection, postgresql+asyncpg://...)
+    #   REDIS_URL                 (Upstash rediss://...)  -- still required by config; unused at runtime
+    #   AZURE_OPENAI_API_KEY      (Azure OpenAI key)
+    #   AZURE_OPENAI_ENDPOINT     (https://...cognitiveservices.azure.com)
+    #   AZURE_OPENAI_API_VERSION  (2025-01-01-preview)
+    #   AZURE_OPENAI_DEPLOYMENT_CHAT  (gpt-4.1-mini)
+    #   APIFY_TOKEN               (apify_api_...)
+    #   DEV_USER_ID               (any UUID, single-user MVP)
+    #   DEV_USER_EMAIL            (any email)
+    #   CORS_ORIGINS              (https://<your-vercel-domain>.vercel.app)
+    #   RECRUITER_PROVIDER        (mock | apify)
+    #   CONTACT_PROVIDER          (mock | hunter | contactout)
+    envVars:
+      - key: APP_ENV
+        value: prod
+      - key: LOG_LEVEL
+        value: INFO
+      - key: RECRUITER_PROVIDER
+        value: apify
+      - key: CONTACT_PROVIDER
+        value: mock

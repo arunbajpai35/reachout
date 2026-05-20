@@ -1,7 +1,11 @@
 // Typed API client. Hand-written rather than codegen -- backend surface is small
 // and seeing the request/response shapes inline keeps changes obvious during MVP.
 
-const BASE = "/api/v1";
+// In dev, requests go through Vite's proxy ("/api/v1" → localhost:8002).
+// In production, set VITE_API_BASE_URL to the absolute backend URL,
+// e.g. "https://reachout-api.onrender.com".
+const RAW_BASE = import.meta.env.VITE_API_BASE_URL ?? "";
+const BASE = (RAW_BASE.endsWith("/") ? RAW_BASE.slice(0, -1) : RAW_BASE) + "/api/v1";
 
 export class ApiError extends Error {
   constructor(public status: number, public code: string, message: string) {

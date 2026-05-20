@@ -75,11 +75,7 @@ class ApifyRecruiterProvider(RecruiterDiscoveryProvider):
         )
 
         try:
-            run = await self._client.actor(self._actor_id).call(
-                run_input=run_input,
-                timeout_secs=180,
-                wait_secs=180,
-            )
+            run = await self._client.actor(self._actor_id).call(run_input=run_input)
         except Exception as e:
             raise UpstreamError(f"apify actor call failed: {e}") from e
 

@@ -74,7 +74,7 @@ export default function JobWorkspacePage() {
             go-ahead to spend recruiter-API credits. We also show it when a slug
             is already cached on the company row (from a previous job for the
             same company) -- the user still needs to confirm to fire discovery. */}
-        {job.company && job.status === "extracted" && (
+        {job.company && (job.status === "extracted" || job.status === "failed") && (
           <CompanyConfirmCard job={job} />
         )}
 

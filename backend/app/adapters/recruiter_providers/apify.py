@@ -27,9 +27,10 @@ from app.core.logging import log
 # Override via APIFY_RECRUITER_ACTOR if you prefer a different one.
 DEFAULT_ACTOR = "harvestapi/linkedin-company-employees"
 
-# "Basic" gives us the fields our parser needs at $3/1k; "Full" is $8/1k and
-# includes attempted email lookup. Stick with Basic; ContactOut handles emails.
-DEFAULT_SCRAPER_MODE = "Basic"
+# "Short" is the cheapest tier ($4/1k) and gives us name/title/url/location -- enough
+# for our ranking + outreach pipeline. "Full" ($8/1k) adds full experience; "Full +
+# email search" ($12/1k) bundles enrichment. ContactOut handles emails for us.
+DEFAULT_SCRAPER_MODE = "Short"
 
 
 class ApifyRecruiterProvider(RecruiterDiscoveryProvider):

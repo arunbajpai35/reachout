@@ -1,18 +1,21 @@
 """Apify-backed recruiter discovery.
 
-Calls a LinkedIn company-employees actor on Apify and parses the items into our
-RecruiterCandidate shape. NOT default in dev -- requires RECRUITER_PROVIDER=apify.
-Each call spins up an Apify actor run; expect 30-90 seconds of wall time and
-~$0.05-0.15 of Apify credit consumption depending on the actor and result count.
+Calls a LinkedIn company-employees actor on Apify via direct REST API. We bypass
+`apify-client` because its pydantic schema validation breaks on actors using the
+newer pay-per-event pricing model (e.g. harvestapi/linkedin-company-employees).
+
+NOT default in dev -- requires RECRUITER_PROVIDER=apify. Each call spins up an
+Apify actor run; expect 30-90 seconds of wall time.
 
 The actor id is configurable via APIFY_RECRUITER_ACTOR. Different actors return
 slightly different JSON shapes; the parser below is defensive.
 """
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
-from apify_client import ApifyClientAsync
+import httpx
 
 from app.adapters.recruiter_providers.base import (
     RecruiterCandidate,
@@ -22,16 +25,17 @@ from app.config import get_settings
 from app.core.errors import UpstreamError
 from app.core.logging import log
 
-# Default actor: harvestapi's linkedin-company-employees. Pricing: $3/1k "Basic"
-# profiles (name/title/url/location) -- enough for our ranking + outreach pipeline.
-# Override via APIFY_RECRUITER_ACTOR if you prefer a different one.
+# Default actor: harvestapi's linkedin-company-employees. Pricing tier we send
+# below; override via APIFY_RECRUITER_ACTOR if you prefer a different actor.
 DEFAULT_ACTOR = "harvestapi/linkedin-company-employees"
 
-# "Short" is the cheapest tier ($4/1k) and gives us name/title/url/location -- enough
-# for our ranking + outreach pipeline. "Full" ($8/1k) adds full experience; "Full +
-# email search" ($12/1k) bundles enrichment. ContactOut handles emails for us.
-# The actor expects the full label including the price suffix as the literal value.
+# Pricing tier on harvestapi's actor. Cheapest variant. The actor expects the
+# literal label, NOT a slug -- the price suffix is part of the enum value.
 DEFAULT_SCRAPER_MODE = "Short ($4 per 1k)"
+
+_API_BASE = "https://api.apify.com/v2"
+_POLL_INTERVAL_SECS = 3.0
+_RUN_TIMEOUT_SECS = 180
 
 
 class ApifyRecruiterProvider(RecruiterDiscoveryProvider):
@@ -41,7 +45,7 @@ class ApifyRecruiterProvider(RecruiterDiscoveryProvider):
         settings = get_settings()
         if not settings.apify_token:
             raise UpstreamError("APIFY_TOKEN missing in env")
-        self._client = ApifyClientAsync(token=settings.apify_token)
+        self._token = settings.apify_token
         self._actor_id = settings.apify_recruiter_actor or DEFAULT_ACTOR
 
     async def find_recruiters(
@@ -51,16 +55,23 @@ class ApifyRecruiterProvider(RecruiterDiscoveryProvider):
         company_name: str,
         limit: int = 25,
     ) -> list[RecruiterCandidate]:
-        # Input shape targets harvestapi/linkedin-company-employees. Extra keys
-        # (companyUrl, country, etc.) are harmless on other actors -- most ignore
-        # unknown fields.
         company_url = f"https://www.linkedin.com/company/{company_linkedin_slug}"
         run_input: dict[str, Any] = {
             "companies": [company_url],
             "profileScraperMode": DEFAULT_SCRAPER_MODE,
             "locations": ["India"],
+            # Bias the upstream search toward recruiter-flavored titles so we
+            # don't waste limit slots on random non-recruiter employees. Local
+            # classifier still has final say on linking to the job.
+            "jobTitles": [
+                "recruiter",
+                "talent acquisition",
+                "technical recruiter",
+                "engineering recruiter",
+                "tag",
+            ],
             "maxItems": limit,
-            # Legacy / alternate-actor compatibility keys (ignored by harvestapi):
+            # Legacy / alternate-actor compatibility keys (harmless if ignored).
             "companyUrl": company_url,
             "companyUrls": [company_url],
             "company": company_linkedin_slug,
@@ -76,27 +87,55 @@ class ApifyRecruiterProvider(RecruiterDiscoveryProvider):
             limit=limit,
         )
 
-        try:
-            run = await self._client.actor(self._actor_id).call(run_input=run_input)
-        except Exception as e:
-            raise UpstreamError(f"apify actor call failed: {e}") from e
+        # The actor id uses "owner/name"; Apify's REST API path uses "owner~name".
+        actor_path = self._actor_id.replace("/", "~")
+        headers = {"Authorization": f"Bearer {self._token}"}
 
-        if not run or "defaultDatasetId" not in run:
-            raise UpstreamError("apify run completed without a dataset")
+        async with httpx.AsyncClient(
+            base_url=_API_BASE, headers=headers, timeout=30.0
+        ) as client:
+            try:
+                # 1. Start the run.
+                r = await client.post(f"/acts/{actor_path}/runs", json=run_input)
+                r.raise_for_status()
+                run = r.json()["data"]
+                run_id = run["id"]
+                dataset_id = run["defaultDatasetId"]
+                log.info("apify.run.started", run_id=run_id)
 
-        items: list[dict[str, Any]] = []
-        async for item in self._client.dataset(run["defaultDatasetId"]).iterate_items():
-            items.append(item)
-            if len(items) >= limit * 2:  # generous, we filter locally below
-                break
+                # 2. Poll until terminal status.
+                elapsed = 0.0
+                while elapsed < _RUN_TIMEOUT_SECS:
+                    await asyncio.sleep(_POLL_INTERVAL_SECS)
+                    elapsed += _POLL_INTERVAL_SECS
+                    r = await client.get(f"/actor-runs/{run_id}")
+                    r.raise_for_status()
+                    status = r.json()["data"]["status"]
+                    if status == "SUCCEEDED":
+                        break
+                    if status in {"FAILED", "ABORTED", "TIMED-OUT"}:
+                        raise UpstreamError(f"apify actor run ended with status={status}")
+                else:
+                    raise UpstreamError(
+                        f"apify actor run timed out after {_RUN_TIMEOUT_SECS}s"
+                    )
+
+                # 3. Fetch the dataset items.
+                r = await client.get(
+                    f"/datasets/{dataset_id}/items",
+                    params={"limit": str(limit * 2), "clean": "true"},
+                )
+                r.raise_for_status()
+                items: list[dict[str, Any]] = r.json()
+            except httpx.HTTPError as e:
+                raise UpstreamError(f"apify call failed: {e}") from e
 
         log.info(
             "apify.recruiter_search.done",
             actor=self._actor_id,
-            run_id=run.get("id"),
+            run_id=run_id,
             items=len(items),
         )
-
         return _items_to_candidates(items, company_name=company_name)
 
 
@@ -131,7 +170,6 @@ def _items_to_candidates(items: list[dict], *, company_name: str) -> list[Recrui
         )
         if not name or not url:
             continue
-        # Dedupe within a single response by URL.
         url = str(url).split("?")[0]
         if url in seen_urls:
             continue

@@ -144,11 +144,22 @@ function RecruitersSection({
     queryFn: () => api.jobs.recruiters(jobId),
   });
 
+  const allMock =
+    !!q.data && q.data.length > 0 && q.data.every((r) => r.source === "mock");
+
   return (
     <section>
       <SectionTitle hint={q.data ? `${q.data.length} matched` : undefined}>
         Recruiters
       </SectionTitle>
+      {allMock && (
+        <div className="mb-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          <strong>Demo data.</strong> These recruiters come from the mock provider, not LinkedIn.
+          Names and LinkedIn URLs are synthetic and the profiles do not exist. Set
+          <code className="mx-1 rounded bg-amber-100 px-1 py-0.5 font-mono">RECRUITER_PROVIDER=contactout</code>
+          (or wait for Apify integration) to get real recruiters.
+        </div>
+      )}
       {q.isLoading ? (
         <div className="flex items-center gap-2 text-sm text-slate-500">
           <Spinner /> Loading recruiters…

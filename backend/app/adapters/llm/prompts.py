@@ -369,7 +369,7 @@ Return one variant per requested channel. Follow every rule in the system messag
 # Resume parsing
 # =====================================================================
 
-RESUME_PARSE_PROMPT_VERSION = "resume-v1"
+RESUME_PARSE_PROMPT_VERSION = "resume-v2"
 
 RESUME_PARSE_SYSTEM = """You extract a candidate's professional profile from resume text into a strict schema.
 
@@ -377,7 +377,13 @@ Rules:
 - Output ONLY fields present in the schema. If a field is not clearly supported by the resume, use null (or [] for arrays).
 - Do NOT invent experience, projects, or numbers. If a metric is not in the resume, omit it.
 - summary: 1-2 sentences describing the candidate's specialty and current focus. Synthesized, but grounded in the resume content. No marketing language.
-- years_experience: integer. Compute from the earliest professional role to the latest (or today if current). Internships count as 0.5x. If the dates are ambiguous, return null.
+- years_experience: number (decimals allowed). SUM the durations of FULL-TIME post-education professional roles only.
+    - Do NOT use the calendar span from earliest job to today. Sum the actual employment durations.
+    - Internships of ANY length count as 0. They are pre-career training, not professional experience.
+    - Part-time / contract roles count at 0.5x their duration.
+    - Volunteer or unpaid roles count as 0.
+    - For a current role with no end date, use today as the end date.
+    - Round to 1 decimal place. If dates are ambiguous or missing, return null.
 - target_role: ONLY if the resume explicitly states a target role (objective line, "looking for" statement). Otherwise null.
 - skills: lowercased canonical technical skills (languages, frameworks, databases, tools). Deduplicated. Skip soft skills, methodologies named without context, and tools mentioned only in passing.
 - notable_projects: pick the top 3 most substantial projects/work items from the resume. Prefer items with concrete outcomes or scale. For each:

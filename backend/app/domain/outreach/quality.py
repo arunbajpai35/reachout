@@ -8,7 +8,7 @@ Add a rule by editing the lists or `_run_rules`. The evaluator is the spec.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from typing import Literal
 
 Severity = Literal["block", "warn"]

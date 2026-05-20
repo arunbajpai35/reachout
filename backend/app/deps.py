@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from arq.connections import ArqRedis, create_pool, RedisSettings
+from arq.connections import ArqRedis, RedisSettings, create_pool
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 

@@ -16,12 +16,11 @@ The rationale string is the source of truth. If a score surprises you, read the 
 """
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Iterable
 
 from app.domain.recruiter.classifier import TitleCategory, TitleClassification, classify_title
 from app.domain.recruiter.location import location_score
-
 
 _TITLE_WEIGHT = {
     TitleCategory.TECHNICAL_RECRUITER: 1.0,

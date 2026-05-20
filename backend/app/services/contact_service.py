@@ -5,7 +5,7 @@ Explicit user action only -- never auto-enriches during discovery.
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import select
@@ -47,7 +47,6 @@ class ContactService:
         )
 
         # Persist new contacts. Unique constraint (recruiter_id, kind, value) handles dedupe.
-        persisted: list[Contact] = []
         for c in result.contacts:
             stmt = (
                 pg_insert(Contact)
@@ -67,7 +66,7 @@ class ContactService:
 
         # Always stamp enriched_at, even on empty results -- distinguishes "never tried"
         # from "tried, vendor had nothing".
-        recruiter.enriched_at = datetime.now(timezone.utc)
+        recruiter.enriched_at = datetime.now(UTC)
         await self.session.commit()
         await self.session.refresh(recruiter)
 

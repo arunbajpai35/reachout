@@ -46,4 +46,7 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "N"]
-ignore = ["E501"]
+# E501: line length is enforced by formatter, not linter.
+# B008: FastAPI uses `arg: T = Depends(...) / File(...)` as the idiomatic DI pattern;
+#       Ruff flags it because calling a function in a default arg is normally a bug.
+ignore = ["E501", "B008"]

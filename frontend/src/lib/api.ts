@@ -90,7 +90,14 @@ export type RankedRecruiter = {
   score: number;
   rationale: string;
   contacts: RecruiterContact[];
+  enriched_at: string | null;
   last_seen_at: string;
+};
+
+export type EnrichRecruiterResult = {
+  recruiter_id: string;
+  enriched_at: string | null;
+  contacts: RecruiterContact[];
 };
 
 export type CandidateProject = {
@@ -178,6 +185,10 @@ export const api = {
         body: JSON.stringify(payload),
       }),
     recruiters: (id: string) => request<RankedRecruiter[]>(`/jobs/${id}/recruiters`),
+  },
+  recruiters: {
+    enrich: (id: string) =>
+      request<EnrichRecruiterResult>(`/recruiters/${id}/enrich`, { method: "POST" }),
   },
   candidate: {
     get: () => request<Candidate | null>("/candidate"),

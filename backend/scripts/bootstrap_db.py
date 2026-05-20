@@ -28,6 +28,9 @@ async def main() -> None:
         await conn.execute(
             text("ALTER TABLE outreach ADD COLUMN IF NOT EXISTS tone TEXT")
         )
+        await conn.execute(
+            text("ALTER TABLE recruiters ADD COLUMN IF NOT EXISTS enriched_at TIMESTAMPTZ")
+        )
 
     async with SessionLocal() as session:
         existing = await session.scalar(select(User).where(User.id == settings.dev_user_id))

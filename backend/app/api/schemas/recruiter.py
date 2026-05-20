@@ -29,4 +29,11 @@ class RankedRecruiter(BaseModel):
     score: float
     rationale: str
     contacts: list[RecruiterContact] = []
+    enriched_at: datetime | None = None
     last_seen_at: datetime
+
+
+class EnrichRecruiterResponse(BaseModel):
+    recruiter_id: UUID
+    enriched_at: datetime | None
+    contacts: list[RecruiterContact]

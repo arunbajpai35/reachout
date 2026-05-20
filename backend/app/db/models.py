@@ -103,6 +103,9 @@ class Recruiter(Base):
     source: Mapped[str | None] = mapped_column(String)
     source_payload: Mapped[dict | None] = mapped_column(JSONB)
     last_seen_at: Mapped[datetime] = _ts()
+    # Null = never attempted. Set whenever an enrichment provider was called,
+    # whether or not it produced contacts.
+    enriched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class Contact(Base):

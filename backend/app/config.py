@@ -42,6 +42,9 @@ class Settings(BaseSettings):
     recruiter_provider: str = "mock"
     recruiter_limit: int = 25
 
+    # Contact-enrichment provider: "mock" (default, free) | "contactout" (paid, 1 credit/call)
+    contact_provider: str = "mock"
+
     # Dev user (single-user MVP)
     dev_user_id: UUID
     dev_user_email: str

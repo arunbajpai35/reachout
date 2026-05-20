@@ -158,6 +158,7 @@ function RecruitersSection({
           recruiters={q.data ?? []}
           selectedId={selectedId}
           onSelect={onSelect}
+          jobId={jobId}
         />
       )}
     </section>

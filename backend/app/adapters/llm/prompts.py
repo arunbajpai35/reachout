@@ -369,7 +369,7 @@ Return one variant per requested channel. Follow every rule in the system messag
 # Resume parsing
 # =====================================================================
 
-RESUME_PARSE_PROMPT_VERSION = "resume-v3"
+RESUME_PARSE_PROMPT_VERSION = "resume-v3.1"
 
 RESUME_PARSE_SYSTEM = """You extract a candidate's professional profile from resume text into a strict schema.
 
@@ -377,13 +377,17 @@ Rules:
 - Output ONLY fields present in the schema. If a field is not clearly supported by the resume, use null (or [] for arrays).
 - Do NOT invent experience, projects, or numbers. If a metric is not in the resume, omit it.
 - summary: 1-2 sentences describing the candidate's specialty and current focus. Synthesized, but grounded in the resume content. No marketing language.
-- years_experience: number (decimals allowed). SUM the durations of FULL-TIME post-education professional roles only.
-    - Do NOT use the calendar span from earliest job to today. Sum the actual employment durations.
-    - Internships of ANY length count as 0. They are pre-career training, not professional experience.
-    - Part-time / contract roles count at 0.5x their duration.
-    - Volunteer or unpaid roles count as 0.
-    - For a current role with no end date, use today as the end date.
-    - Round to 1 decimal place. If dates are ambiguous or missing, return null.
+- years_experience: number (decimals allowed). Compute it by this exact procedure:
+    1. For each post-education role, compute its duration IN MONTHS (count months between start month and end month, or between start and today if the role is ongoing). Work at month-level granularity, NEVER at year-level.
+    2. Apply weights to the months:
+        - Full-time roles: weight 1.0
+        - Part-time / contract roles: weight 0.5
+        - Internships: weight 0 (excluded entirely; do not add anything for them)
+        - Volunteer / unpaid roles: weight 0
+    3. Sum all the weighted months across all roles.
+    4. Divide that total by 12 ONLY at the very end.
+    5. Round to 1 decimal place.
+    Do NOT round per-role years before summing -- always sum months first. Do NOT use the calendar span from earliest job to today. If dates are ambiguous or missing, return null.
 - target_role: ONLY if the resume explicitly states a target role (objective line, "looking for" statement). Otherwise null.
 - skills: lowercased canonical technical skills (languages, frameworks, databases, tools). Deduplicated. Skip soft skills, methodologies named without context, and tools mentioned only in passing.
 - notable_projects: STRONGLY prefer items from a dedicated "Projects" / "Personal Projects" / "Side Projects" / "Open Source" section of the resume.

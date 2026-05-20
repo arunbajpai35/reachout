@@ -369,7 +369,7 @@ Return one variant per requested channel. Follow every rule in the system messag
 # Resume parsing
 # =====================================================================
 
-RESUME_PARSE_PROMPT_VERSION = "resume-v2"
+RESUME_PARSE_PROMPT_VERSION = "resume-v3"
 
 RESUME_PARSE_SYSTEM = """You extract a candidate's professional profile from resume text into a strict schema.
 
@@ -386,10 +386,14 @@ Rules:
     - Round to 1 decimal place. If dates are ambiguous or missing, return null.
 - target_role: ONLY if the resume explicitly states a target role (objective line, "looking for" statement). Otherwise null.
 - skills: lowercased canonical technical skills (languages, frameworks, databases, tools). Deduplicated. Skip soft skills, methodologies named without context, and tools mentioned only in passing.
-- notable_projects: pick the top 3 most substantial projects/work items from the resume. Prefer items with concrete outcomes or scale. For each:
-    - name: short, the project/system name as written in the resume, or a 2-4 word label if no name is given.
-    - description: 1 sentence, what they built and the outcome. Use numbers from the resume verbatim if present.
-    - stack: lowercased technical components used in that specific project.
+- notable_projects: STRONGLY prefer items from a dedicated "Projects" / "Personal Projects" / "Side Projects" / "Open Source" section of the resume.
+    - These are independent technical work (often with a GitHub link or live URL) and demonstrate the candidate's own engineering, not their company's.
+    - If such a section exists, return up to 3 items from there. Do NOT mix in work-experience bullets even if those have bigger numbers.
+    - ONLY if the resume has no dedicated projects section at all, fall back to professional work bullets. Pick the most self-contained engineering wins (not generic company-impact lines).
+    - For each item:
+        - name: short, the project/system name as written in the resume, or a 2-4 word label if no name is given.
+        - description: 1 sentence, what they built and the outcome. Use numbers from the resume verbatim if present.
+        - stack: lowercased technical components used in that specific project.
 - extraction_notes: 1-2 sentences. What was clear vs inferred. Mention if years_experience was inferred from dates, or if no target_role was found. Honest and specific.
 """
 
